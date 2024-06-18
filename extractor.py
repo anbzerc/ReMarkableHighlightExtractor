@@ -1,21 +1,15 @@
 import os
-import sys
 import argparse
-
-import numpy as np
-from math import isclose
-
 import cv2
-import fitz
-from PIL import Image, ImageChops
-from pytesseract import pytesseract
-from PyPDF2 import PdfReader
+import fitz  # PyMuPDF
+from PyPDF2 import PdfReader, PdfWriter
 
-def getHighlightedText(highlighted, output, start, end, psm, numbering, display, blanks):
+def add_page_number(page, page_num):
+    rect = page.rect
+    text = f"Page {page_num}"
+    page.insert_text((10, 10), text, fontsize=12, fontname="helv")  # Position (10, 10), font size 12
 
-    #path_to_tesseract = r"C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
-    #pytesseract.tesseract_cmd = path_to_tesseract
-
+def extractHighlightedPages(highlighted, output, start, end, numbering, display, blanks):
     if start != 0 and numbering == 1:
         start -= 1
 
@@ -23,86 +17,66 @@ def getHighlightedText(highlighted, output, start, end, psm, numbering, display,
     mat = fitz.Matrix(scale, scale)
 
     highlightedPages = fitz.open(highlighted)
+    writer = PdfWriter()
 
     for i in range(start + (numbering - 1), end):
+        print(f"Processing page {i + 1}...")
         highlightedPage = highlightedPages.load_page(i)
         highlightedPix = highlightedPage.get_pixmap(matrix=mat)
         highlightedPix.save('highlightedPage.jpg')
 
         img = cv2.imread('highlightedPage.jpg')
+
+        # Set yellow range
+        yellowRange = [(20, 100, 100), (30, 255, 255)]  # You might need to adjust these values
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-        
-        pinkRange = [(0, 140, 200), (255, 200, 255)]
+        yellow_mask = cv2.inRange(hsv, yellowRange[0], yellowRange[1])
+        yellow_detected = cv2.countNonZero(yellow_mask) > 0
 
-        mask = cv2.inRange(hsv, pinkRange[0], pinkRange[1])
-        target = cv2.bitwise_and(img, img, mask=mask)
-        diff = cv2.cvtColor(target, cv2.COLOR_BGR2GRAY)
+        if yellow_detected:
+            # Add page number to the highlighted page
+            add_page_number(highlightedPage, i + 1)
 
-        contours, _ = cv2.findContours(diff, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+            # Convert the highlighted page to a PDF page and add to the writer
+            temp_pdf_path = 'temp_page.pdf'
+            pdf_page = fitz.open()  # Create a new PDF in memory
+            pdf_page.insert_pdf(highlightedPages, from_page=i, to_page=i)
+            pdf_page.save(temp_pdf_path)
 
-        contourBounds = []
-        for contour in contours:
-            x, y, w, h = cv2.boundingRect(contour)
-            if w > 75:
-                contourBounds.append((x, y, w, h))
-
-        contourBounds = sorted(contourBounds, key=lambda val: (val[1], val[0]))
-
-        text = ""
-        for (index, bound) in enumerate(contourBounds):
-            x = bound[0]
-            y = bound[1]
-            w = bound[2]
-            h = bound[3]
-
-            if index != 0:
-                previousY = contourBounds[index - 1][1]
-                if previousY == y:
-                    text += " "
-                else:
-                    previousH = contourBounds[index - 1][3]
-                    if y - (previousY + previousH) > h:
-                        text += "\n\n"
-                    else:
-                        text += " "
-
-            text += pytesseract.image_to_string(diff[y:y+h, x:x+w], config='--psm ' + str(psm))[:-1]
-        
-        if text != "":
-            with open(output, 'a') as file:
-                file.writelines(["\n# PAGE " + str(i + 1) + "\n\n"])
-                file.writelines([text])
-                file.write("")
-           
-            os.remove('highlightedPage.jpg')
+            temp_pdf_reader = PdfReader(temp_pdf_path)
+            writer.add_page(temp_pdf_reader.pages[0])
 
             if display:
                 cv2.imshow('image', img)
                 cv2.waitKey(0)
+
+            os.remove(temp_pdf_path)
 
         else:
             if display and blanks:
                 cv2.imshow('image', img)
                 cv2.waitKey(0)
 
+        os.remove('highlightedPage.jpg')
+
+    with open(output, 'wb') as outputStream:
+        writer.write(outputStream)
+
     highlightedPages.close()
 
 def main(args):
-
     end = args.end
 
     if end == 0:
         reader = PdfReader(args.highlighted)
         end = len(reader.pages)
 
-    getHighlightedText(args.highlighted, args.output, args.start, end, args.psm, args.numbering, args.display, args.blanks)
+    extractHighlightedPages(args.highlighted, args.output, args.start, end, args.numbering, args.display, args.blanks)
 
 def parse_arguments():
-
-    parser = argparse.ArgumentParser(description="Extract highlights from a ReMarkable PDF.")
+    parser = argparse.ArgumentParser(description="Extract pages with yellow highlights from a PDF.")
     parser.add_argument('highlighted', help="path of highlighted PDF")
-    parser.add_argument('output', help="path of output file")
-    parser.add_argument('-p', '--psm', help="psm for pytesseract to use", default=6)
+    parser.add_argument('output', help="path of output PDF file")
     parser.add_argument('-s', '--start', help="extraction starting page", default=0, type=int)
     parser.add_argument('-e', '--end', help="extraction ending page", default=0, type=int)
     parser.add_argument('-n', '--numbering', help="the page relative to the PDF file where the page numbering actually starts at 1", default=1, type=int)
@@ -113,6 +87,5 @@ def parse_arguments():
     return args
 
 if __name__ == "__main__":
-
     arguments = parse_arguments()
-    main(arguments) 
+    main(arguments)
