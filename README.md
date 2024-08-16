@@ -1,20 +1,38 @@
-# ReMarkable Highlight Extractor
+# ReMarkable Highlight Extractor 📚✨
 
-The ReMarkable is an E-Ink tablet that can be used for reading and note-taking. More about it can be found here: https://remarkable.com/
+The ReMarkable is an E-Ink tablet primarily used for reading and note-taking. 
 
-One of my main uses of the tablet is to load a PDF and use the snap-to-text highlighting feature. However, (as of now) there is no mainstream process to extract the text that has been highlighted. There have, however, been many GitHub repositories dedicated to extracting highlighted text by parsing the underlying files. 
-Most of these methods worked flawlessly for older versions, but the most recent versions have changed the how the ReMarkable stores annotation information, rendering all previous methods useless.
+One of my main uses for the tablet is loading PDFs and using the snap-to-text highlighting feature. However, as of now, there isn't a mainstream method to extract the text that has been highlighted. While there have been various GitHub repositories dedicated to extracting highlighted text by parsing the underlying files, these methods worked well for older versions but have become obsolete with recent updates, as the ReMarkable changed how it stores annotation information.
 
-This project aims to solve this problem for good.
+Given this, I decided to take a different approach with my project to address the problem effectively. 🎯
+## My Approach 💡
 
-In order to use this extractor, you must have two copies of the PDF in the same directory as this cloned repository:
-- The original PDF
-- The highlighted PDF
+Rather than trying to parse the underlying files, my program focuses on keeping the highlights in context by extracting entire pages that contain yellow highlights. This way, you retain the full context of the highlighted content rather than isolating the text.
+## Cloning the Repository 🛠️
 
-The highlighted PDF can be exported through two methods (that I know of):
-1. Using the ReMarkable application, right click on the PDF and choose "Export" with the file format as PDF. However, PDFs will stop syncing through ReMarkable Connect after a certain amount of time, so this method may not be entirely feasible.
-2. Using the reMarkable Connection Utilty (RCU) (can be bought for $12 at http://www.davisr.me/projects/rcu/), left click the PDF and press the "Export PDF" drop-down arrow at the bottom of the application. When the options pop up, make sure to check the "Annotated PDF" box and select "Export PDF (Web UI)". If this button is grayed out, make sure your tablet is directly connected with the cable and that the "USB web interface" slider is enabled (can be found at Menu -> Settings -> Storage on the tablet).
+To get started, clone the repository using the following command:
 
-The extraction works by converting each page within the specified range into an image and then comparing the two images. If the page has highlights, the hightlighted text should be the only thing remaining after the comparison. At this point, the extractor attempts to read the text and enter it into a .txt file. This process is slow, but should be guaranteed to work regardless of ReMarkable version. (Do not be surprised if the text is not perfectly extracted, there are a lot of ways it can get it wrong)
+```
+git clone https://github.com/yourusername/remarkable-highlight-extractor.git
+cd remarkable-highlight-extractor
+```
 
-Once both PDFs have been placed in the home directory, run the python code from the terminal and let the magic happen.
+## Program Options ⚙️
+
+When running the program, you can customize its behavior using various options:
+
+    highlighted (required): The path to the PDF with the highlights.
+    output (required): The path where the output PDF with extracted pages will be saved.
+    -s, --start: The starting page number for extraction (default is 0, meaning it starts from the first page).
+    -e, --end: The ending page number for extraction (default is 0, which processes until the last page).
+    -n, --numbering: The page number where numbering starts relative to the PDF file (default is 1).
+    -d, --display: Option to display the page images during processing (use this flag if needed).
+    -b, --blanks: Option to display pages even if no highlights are detected (use this flag if you want to review non-highlighted pages).
+
+## Example Usage 🚀
+
+To run the program with a specific set of options, use a command like the following:
+```
+python extract.py highlighted.pdf output.pdf -s 1 -e 10 -d -b
+```
+This command will extract pages 1 to 10 from highlighted.pdf, save the output to output.pdf, display each page as it processes, and even show pages without highlights.
