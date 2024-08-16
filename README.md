@@ -36,3 +36,7 @@ To run the program with a specific set of options, use a command like the follow
 python extract.py highlighted.pdf output.pdf -s 1 -e 10 -d -b
 ```
 This command will extract pages 1 to 10 from highlighted.pdf, save the output to output.pdf, display each page as it processes, and even show pages without highlights.
+
+## Acknowledgements 🙏
+
+A special thanks to the original author of the base program (https://github.com/karismas/ReMarkableHighlightExtractor) whose structure and ideas served as the foundation for this project. Your work provided a valuable starting point and inspiration!
